@@ -13,8 +13,6 @@ export default function AddWeightModal({ onClose, onSaved, defaultDate }: Props)
   const today = new Date().toISOString().split('T')[0]
   const [date, setDate] = useState(defaultDate ?? today)
   const [weight, setWeight] = useState('')
-  const [bodyFat, setBodyFat] = useState('')
-  const [waist, setWaist] = useState('')
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -34,8 +32,6 @@ export default function AddWeightModal({ onClose, onSaved, defaultDate }: Props)
       user_id: user.id,
       date,
       weight_lb: parseFloat(weight),
-      body_fat_pct: bodyFat ? parseFloat(bodyFat) : null,
-      waist_in: waist ? parseFloat(waist) : null,
       notes: notes.trim() || null,
       source: 'manual',
     }, { onConflict: 'user_id,date' })
@@ -81,39 +77,6 @@ export default function AddWeightModal({ onClose, onSaved, defaultDate }: Props)
                 max="600"
                 required
                 autoFocus
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B72CC]"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Body fat % <span className="text-slate-400 font-normal">(opt)</span>
-              </label>
-              <input
-                type="number"
-                value={bodyFat}
-                onChange={(e) => setBodyFat(e.target.value)}
-                placeholder="18.5"
-                step="0.1"
-                min="1"
-                max="60"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B72CC]"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Waist <span className="text-slate-400 font-normal">(in, opt)</span>
-              </label>
-              <input
-                type="number"
-                value={waist}
-                onChange={(e) => setWaist(e.target.value)}
-                placeholder="34.0"
-                step="0.25"
-                min="20"
-                max="80"
                 className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B72CC]"
               />
             </div>

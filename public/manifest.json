@@ -1,0 +1,17 @@
+{
+  "name": "RelentlessFit",
+  "short_name": "RelentlessFit",
+  "description": "Track calories, workouts, and weight trends",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#1B72CC",
+  "theme_color": "#1B72CC",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -173,12 +173,6 @@ export default function WeightPage() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-slate-900">{entry.weight_lb.toFixed(1)} lb</p>
-                    {entry.body_fat_pct && (
-                      <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{entry.body_fat_pct}% BF</span>
-                    )}
-                    {entry.waist_in && (
-                      <span className="text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">{entry.waist_in}" waist</span>
-                    )}
                   </div>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {new Date(entry.date + 'T12:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
