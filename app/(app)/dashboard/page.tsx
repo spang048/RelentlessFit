@@ -7,10 +7,8 @@ import AddFoodModal from '@/components/AddFoodModal'
 import AddWorkoutModal from '@/components/AddWorkoutModal'
 import AddWeightModal from '@/components/AddWeightModal'
 import type { UserProfile, FoodEntry, ExerciseEntry, WeightEntry } from '@/types'
+import { formatDate } from '@/lib/utils'
 
-function formatDate(d: Date): string {
-  return d.toISOString().split('T')[0]
-}
 
 function isSameDay(isoString: string, date: string): boolean {
   return isoString.startsWith(date)

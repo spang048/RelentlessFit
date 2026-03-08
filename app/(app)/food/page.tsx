@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AddFoodModal from '@/components/AddFoodModal'
 import type { FoodEntry, MealType } from '@/types'
+import { formatDate } from '@/lib/utils'
 
 const MEAL_ORDER: MealType[] = ['breakfast', 'lunch', 'dinner', 'snack']
 const MEAL_LABELS: Record<MealType, string> = {
@@ -13,9 +14,6 @@ const MEAL_LABELS: Record<MealType, string> = {
   snack: 'Snack',
 }
 
-function formatDate(d: Date): string {
-  return d.toISOString().split('T')[0]
-}
 
 export default function FoodPage() {
   const today = formatDate(new Date())

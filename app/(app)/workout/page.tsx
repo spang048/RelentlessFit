@@ -4,15 +4,13 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import AddWorkoutModal from '@/components/AddWorkoutModal'
 import type { ExerciseEntry } from '@/types'
+import { formatDate } from '@/lib/utils'
 
 const TYPE_EMOJI: Record<string, string> = {
   run: '🏃', walk: '🚶', bike: '🚴', strength: '💪',
   ski: '⛷️', hike: '🥾', other: '🏋️',
 }
 
-function formatDate(d: Date): string {
-  return d.toISOString().split('T')[0]
-}
 
 export default function WorkoutPage() {
   const today = formatDate(new Date())

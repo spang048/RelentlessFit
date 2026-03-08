@@ -4,10 +4,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { calculateBaselineBurn, calculateGoalTarget, weightChangePer7Days } from '@/lib/calculations'
 import type { UserProfile, FoodEntry, ExerciseEntry, WeightEntry } from '@/types'
+import { formatDate } from '@/lib/utils'
 
-function formatDate(d: Date): string {
-  return d.toISOString().split('T')[0]
-}
 
 function weekStart(date: string): string {
   const d = new Date(date + 'T12:00:00')

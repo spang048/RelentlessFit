@@ -5,10 +5,8 @@ import { createClient } from '@/lib/supabase/client'
 import AddWeightModal from '@/components/AddWeightModal'
 import { weightChangePer7Days } from '@/lib/calculations'
 import type { WeightEntry } from '@/types'
+import { formatDate } from '@/lib/utils'
 
-function formatDate(d: Date): string {
-  return d.toISOString().split('T')[0]
-}
 
 export default function WeightPage() {
   const [entries, setEntries] = useState<WeightEntry[]>([])
