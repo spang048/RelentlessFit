@@ -18,6 +18,15 @@ interface SavedMeal {
   total_calories: number
 }
 
+// Extended item type used while building a new meal
+interface NewMealItem {
+  food_name: string
+  calories: string
+  baseCalories: number | null   // per-serving calories from DB; null = manual entry
+  servings: string
+  servingLabel: string          // e.g. "1 slice (30g)"
+}
+
 interface Props {
   onClose: () => void
   onSaved: () => void
@@ -31,46 +40,127 @@ const MEAL_TYPES: { value: MealType; label: string }[] = [
   { value: 'snack', label: 'Snack' },
 ]
 
-const QUICK_CALORIES = [100, 200, 300, 400, 500]
+const QUICK_SERVINGS = [0.5, 1, 1.5, 2, 3]
+
+// ── Reusable suggestion list (inline, no absolute positioning) ───────────────
+function SuggestionList({
+  results,
+  onSelect,
+}: {
+  results: FoodItem[]
+  onSelect: (item: FoodItem) => void
+}) {
+  if (results.length === 0) return null
+  return (
+    <div className="mt-1 border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
+      {results.map((item, i) => (
+        <button
+          key={i}
+          type="button"
+          onMouseDown={() => onSelect(item)}   // fires before onBlur
+          className="w-full px-3 py-2.5 text-left flex items-center justify-between gap-3 border-b border-slate-50 last:border-0 hover:bg-blue-50 transition-colors"
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-slate-800 truncate">{item.name}</p>
+            <p className="text-xs text-slate-400">{item.serving}</p>
+          </div>
+          <span className="text-xs font-bold text-[#1B72CC] flex-shrink-0 bg-blue-50 px-1.5 py-0.5 rounded">
+            {item.calories} cal
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ── Servings row ─────────────────────────────────────────────────────────────
+function ServingsRow({
+  servings,
+  servingLabel,
+  onChange,
+}: {
+  servings: string
+  servingLabel: string
+  onChange: (s: string) => void
+}) {
+  return (
+    <div className="flex items-center gap-2 bg-blue-50 rounded-lg px-3 py-2 mt-1">
+      <span className="text-xs text-slate-500 flex-shrink-0">Servings:</span>
+      <div className="flex gap-1 flex-wrap flex-1">
+        {QUICK_SERVINGS.map(s => (
+          <button
+            key={s}
+            type="button"
+            onMouseDown={() => onChange(String(s))}
+            className={`px-2 py-0.5 rounded text-xs font-semibold transition-colors ${
+              servings === String(s)
+                ? 'bg-[#1B72CC] text-white'
+                : 'bg-white text-slate-600 border border-slate-200 hover:border-[#1B72CC]'
+            }`}
+          >
+            {s}×
+          </button>
+        ))}
+        <input
+          type="number"
+          value={servings}
+          onChange={e => onChange(e.target.value)}
+          step="0.25"
+          min="0.25"
+          className="w-14 px-1.5 py-0.5 border border-slate-200 rounded text-xs text-center focus:outline-none focus:ring-1 focus:ring-[#1B72CC] bg-white"
+        />
+      </div>
+      <span className="text-xs text-slate-400 hidden sm:block truncate max-w-[100px]">{servingLabel}</span>
+    </div>
+  )
+}
 
 export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
   const [activeTab, setActiveTab] = useState<'food' | 'meals'>('food')
   const [mealType, setMealType] = useState<MealType>('breakfast')
 
-  // ── Food tab ────────────────────────────────────────────────────────────────
+  // ── Add Food tab ─────────────────────────────────────────────────────────────
   const [foodName, setFoodName] = useState('')
   const [calories, setCalories] = useState('')
+  const [baseCalories, setBaseCalories] = useState<number | null>(null)
+  const [servings, setServings] = useState('1')
+  const [servingLabel, setServingLabel] = useState('')
   const [quantity, setQuantity] = useState('')
   const [suggestions, setSuggestions] = useState<FoodItem[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [foodFocused, setFoodFocused] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  // ── My Meals tab ────────────────────────────────────────────────────────────
+  // ── My Meals tab ─────────────────────────────────────────────────────────────
   const [meals, setMeals] = useState<SavedMeal[]>([])
   const [mealsLoading, setMealsLoading] = useState(false)
   const [loggingMeal, setLoggingMeal] = useState<string | null>(null)
   const [deletingMeal, setDeletingMeal] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
 
-  // ── Create Meal form ────────────────────────────────────────────────────────
+  // ── Create Meal form ─────────────────────────────────────────────────────────
   const [newMealName, setNewMealName] = useState('')
-  const [newMealItems, setNewMealItems] = useState([{ food_name: '', calories: '' }])
+  const [newMealItems, setNewMealItems] = useState<NewMealItem[]>([
+    { food_name: '', calories: '', baseCalories: null, servings: '1', servingLabel: '' },
+  ])
   const [savingMeal, setSavingMeal] = useState(false)
+  // Which item row is showing suggestions
+  const [activeItemSugg, setActiveItemSugg] = useState<{ idx: number; results: FoodItem[] } | null>(null)
 
   const supabase = createClient()
 
-  // Food database autocomplete
+  // Recompute Add-Food suggestions whenever foodName changes
   useEffect(() => {
-    if (foodName.trim()) {
-      const results = searchFoods(foodName)
-      setSuggestions(results)
-      setShowSuggestions(results.length > 0)
-    } else {
-      setSuggestions([])
-      setShowSuggestions(false)
-    }
+    setSuggestions(foodName.trim() ? searchFoods(foodName) : [])
   }, [foodName])
+
+  // Auto-update calories when servings changes (Add Food tab)
+  useEffect(() => {
+    if (baseCalories !== null) {
+      const s = parseFloat(servings) || 1
+      setCalories(String(Math.round(baseCalories * s)))
+    }
+  }, [servings, baseCalories])
 
   const loadMeals = useCallback(async () => {
     setMealsLoading(true)
@@ -89,10 +179,23 @@ export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
     if (activeTab === 'meals') loadMeals()
   }, [activeTab, loadMeals])
 
+  // ── Add Food handlers ────────────────────────────────────────────────────────
   function selectSuggestion(item: FoodItem) {
     setFoodName(item.name)
+    setBaseCalories(item.calories)
+    setServingLabel(item.serving)
+    setServings('1')
     setCalories(String(item.calories))
-    setShowSuggestions(false)
+    setFoodFocused(false)
+  }
+
+  function handleFoodNameChange(value: string) {
+    setFoodName(value)
+    // If user edits name manually after picking a suggestion, drop servings link
+    if (baseCalories !== null) {
+      setBaseCalories(null)
+      setServingLabel('')
+    }
   }
 
   async function handleFoodSubmit(e: React.FormEvent) {
@@ -102,11 +205,9 @@ export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
     setError('')
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) { setError('Not logged in'); setSaving(false); return }
-
     const loggedAt = defaultDate
       ? new Date(defaultDate + 'T12:00:00').toISOString()
       : new Date().toISOString()
-
     const { error: err } = await supabase.from('rf_food_entries').insert({
       user_id: user.id,
       logged_at: loggedAt,
@@ -120,6 +221,7 @@ export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
     onClose()
   }
 
+  // ── My Meals handlers ────────────────────────────────────────────────────────
   async function logMeal(meal: SavedMeal) {
     setLoggingMeal(meal.id)
     const { data: { user } } = await supabase.auth.getUser()
@@ -148,6 +250,59 @@ export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
     setMeals(prev => prev.filter(m => m.id !== id))
   }
 
+  // ── Create Meal handlers ─────────────────────────────────────────────────────
+  function updateItemFoodName(idx: number, value: string) {
+    setNewMealItems(prev => prev.map((it, i) =>
+      i === idx
+        ? { ...it, food_name: value, baseCalories: null, servingLabel: '' }
+        : it
+    ))
+    const results = value.trim() ? searchFoods(value) : []
+    setActiveItemSugg(results.length > 0 ? { idx, results } : null)
+  }
+
+  function updateItemCalories(idx: number, value: string) {
+    setNewMealItems(prev => prev.map((it, i) =>
+      i === idx ? { ...it, calories: value } : it
+    ))
+  }
+
+  function updateItemServings(idx: number, value: string) {
+    setNewMealItems(prev => prev.map((it, i) => {
+      if (i !== idx) return it
+      const s = parseFloat(value) || 1
+      const newCal = it.baseCalories !== null
+        ? String(Math.round(it.baseCalories * s))
+        : it.calories
+      return { ...it, servings: value, calories: newCal }
+    }))
+  }
+
+  function selectItemSuggestion(idx: number, food: FoodItem) {
+    setNewMealItems(prev => prev.map((it, i) =>
+      i === idx
+        ? {
+            food_name: food.name,
+            calories: String(food.calories),
+            baseCalories: food.calories,
+            servings: '1',
+            servingLabel: food.serving,
+          }
+        : it
+    ))
+    setActiveItemSugg(null)
+  }
+
+  function focusItemFood(idx: number, currentValue: string) {
+    const results = currentValue.trim() ? searchFoods(currentValue) : []
+    setActiveItemSugg(results.length > 0 ? { idx, results } : null)
+  }
+
+  function removeItem(idx: number) {
+    setNewMealItems(prev => prev.filter((_, i) => i !== idx))
+    setActiveItemSugg(null)
+  }
+
   async function saveNewMeal() {
     if (!newMealName.trim()) return
     const validItems = newMealItems.filter(i => i.food_name.trim() && i.calories)
@@ -159,35 +314,35 @@ export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
       food_name: i.food_name.trim(),
       calories: parseInt(i.calories),
     }))
-    const total_calories = items.reduce((s, i) => s + i.calories, 0)
     await supabase.from('rf_meals').insert({
       user_id: user.id,
       name: newMealName.trim(),
       items,
-      total_calories,
+      total_calories: items.reduce((s, i) => s + i.calories, 0),
     })
     setSavingMeal(false)
     setShowCreate(false)
     setNewMealName('')
-    setNewMealItems([{ food_name: '', calories: '' }])
+    setNewMealItems([{ food_name: '', calories: '', baseCalories: null, servings: '1', servingLabel: '' }])
+    setActiveItemSugg(null)
     loadMeals()
-  }
-
-  function updateNewItem(idx: number, field: 'food_name' | 'calories', value: string) {
-    setNewMealItems(prev => prev.map((item, i) => i === idx ? { ...item, [field]: value } : item))
   }
 
   function cancelCreate() {
     setShowCreate(false)
     setNewMealName('')
-    setNewMealItems([{ food_name: '', calories: '' }])
+    setNewMealItems([{ food_name: '', calories: '', baseCalories: null, servings: '1', servingLabel: '' }])
+    setActiveItemSugg(null)
   }
 
-  return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
-      <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-2xl shadow-xl max-h-[90vh] flex flex-col">
+  const showSuggestions = foodFocused && suggestions.length > 0
 
-        {/* ── Header ─────────────────────────────────────────────────────────── */}
+  return (
+    // overflow-hidden on the backdrop keeps any content from widening the viewport
+    <div className="fixed inset-0 z-50 overflow-hidden flex items-end md:items-center justify-center bg-black/50">
+      <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-2xl shadow-xl max-h-[90vh] flex flex-col overflow-hidden">
+
+        {/* ── Header ──────────────────────────────────────────────────────────── */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 flex-shrink-0">
           <h2 className="text-lg font-semibold text-slate-900">
             {showCreate ? 'Create Meal' : 'Add Food'}
@@ -199,7 +354,7 @@ export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
           </button>
         </div>
 
-        {/* ── Tabs ───────────────────────────────────────────────────────────── */}
+        {/* ── Tabs ────────────────────────────────────────────────────────────── */}
         {!showCreate && (
           <div className="flex border-b border-slate-100 flex-shrink-0">
             {(['food', 'meals'] as const).map(tab => (
@@ -218,7 +373,7 @@ export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
           </div>
         )}
 
-        {/* ── Meal type selector (shared) ─────────────────────────────────────── */}
+        {/* ── Meal-type selector ───────────────────────────────────────────────── */}
         {!showCreate && (
           <div className="px-4 pt-3 pb-1 flex-shrink-0">
             <div className="grid grid-cols-4 gap-1.5">
@@ -240,55 +395,55 @@ export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
           </div>
         )}
 
-        {/* ── Scrollable content ──────────────────────────────────────────────── */}
+        {/* ── Scrollable body ──────────────────────────────────────────────────── */}
         <div className="overflow-y-auto flex-1 px-4 pb-5 pt-3">
 
-          {/* ── Add Food form ─────────────────────────────────────────────────── */}
+          {/* ════════ ADD FOOD tab ════════ */}
           {activeTab === 'food' && !showCreate && (
             <form onSubmit={handleFoodSubmit} className="space-y-3">
 
-              {/* Food name with autocomplete */}
-              <div className="relative">
+              {/* Food name + inline autocomplete */}
+              <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Food name</label>
                 <input
                   type="text"
                   value={foodName}
-                  onChange={e => setFoodName(e.target.value)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  onChange={e => handleFoodNameChange(e.target.value)}
+                  onFocus={() => setFoodFocused(true)}
+                  onBlur={() => setTimeout(() => setFoodFocused(false), 150)}
                   placeholder="Search or type food name…"
                   required
                   autoFocus
                   className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B72CC]"
                 />
                 {showSuggestions && (
-                  <div className="absolute top-full left-0 right-0 z-20 bg-white border border-slate-200 rounded-xl shadow-lg mt-1 overflow-hidden">
-                    {suggestions.map((item, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onMouseDown={() => selectSuggestion(item)}
-                        className="w-full px-3 py-2.5 text-left hover:bg-blue-50 flex items-center justify-between gap-3 border-b border-slate-50 last:border-0"
-                      >
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-slate-800 truncate">{item.name}</p>
-                          <p className="text-xs text-slate-400">{item.serving}</p>
-                        </div>
-                        <span className="text-xs font-bold text-[#1B72CC] flex-shrink-0 bg-blue-50 px-1.5 py-0.5 rounded">
-                          {item.calories}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
+                  <SuggestionList results={suggestions} onSelect={selectSuggestion} />
                 )}
               </div>
 
+              {/* Servings (only shown after selecting from database) */}
+              {baseCalories !== null && (
+                <ServingsRow
+                  servings={servings}
+                  servingLabel={servingLabel}
+                  onChange={setServings}
+                />
+              )}
+
               {/* Calories */}
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Calories</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1">
+                  Calories
+                  {baseCalories !== null && (
+                    <span className="text-slate-400 font-normal ml-1">
+                      ({baseCalories} × {servings} serving{parseFloat(servings) !== 1 ? 's' : ''})
+                    </span>
+                  )}
+                </label>
                 <input
                   type="number"
                   value={calories}
-                  onChange={e => setCalories(e.target.value)}
+                  onChange={e => { setCalories(e.target.value); setBaseCalories(null) }}
                   placeholder="0"
                   min="0"
                   max="9999"
@@ -296,11 +451,11 @@ export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
                   className="w-full px-3 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B72CC]"
                 />
                 <div className="flex gap-1.5 mt-1.5">
-                  {QUICK_CALORIES.map(c => (
+                  {[100, 200, 300, 400, 500].map(c => (
                     <button
                       key={c}
                       type="button"
-                      onClick={() => setCalories(String(c))}
+                      onClick={() => { setCalories(String(c)); setBaseCalories(null) }}
                       className="flex-1 py-1 text-xs font-medium bg-slate-100 hover:bg-blue-50 hover:text-[#1B72CC] rounded text-slate-600 transition-colors"
                     >
                       {c}
@@ -335,7 +490,7 @@ export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
             </form>
           )}
 
-          {/* ── My Meals list ─────────────────────────────────────────────────── */}
+          {/* ════════ MY MEALS tab — list ════════ */}
           {activeTab === 'meals' && !showCreate && (
             <div className="space-y-3">
               {mealsLoading ? (
@@ -357,7 +512,7 @@ export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
                         <p className="text-xs text-slate-500 mt-0.5">
                           {meal.total_calories} cal · {meal.items.length} item{meal.items.length !== 1 ? 's' : ''}
                         </p>
-                        <p className="text-xs text-slate-400 mt-0.5 truncate">
+                        <p className="text-xs text-slate-400 mt-0.5 line-clamp-1">
                           {meal.items.map(i => i.food_name).join(', ')}
                         </p>
                       </div>
@@ -393,7 +548,7 @@ export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
             </div>
           )}
 
-          {/* ── Create Meal form ──────────────────────────────────────────────── */}
+          {/* ════════ CREATE MEAL form ════════ */}
           {showCreate && (
             <div className="space-y-4">
               <div>
@@ -411,43 +566,70 @@ export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-2">
                   Food items
-                  <span className="text-slate-400 font-normal ml-1">(name + calories each)</span>
+                  <span className="text-slate-400 font-normal ml-1">— search to auto-fill calories</span>
                 </label>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {newMealItems.map((item, idx) => (
-                    <div key={idx} className="flex gap-2 items-center">
-                      <input
-                        type="text"
-                        value={item.food_name}
-                        onChange={e => updateNewItem(idx, 'food_name', e.target.value)}
-                        placeholder="Food name"
-                        className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B72CC]"
-                      />
-                      <input
-                        type="number"
-                        value={item.calories}
-                        onChange={e => updateNewItem(idx, 'calories', e.target.value)}
-                        placeholder="Cal"
-                        min="0"
-                        className="w-16 px-2 py-2 border border-slate-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#1B72CC]"
-                      />
-                      {newMealItems.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => setNewMealItems(prev => prev.filter((_, i) => i !== idx))}
-                          className="p-1.5 text-slate-300 hover:text-red-400 flex-shrink-0"
-                        >
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
+                    <div key={idx} className="space-y-1">
+                      {/* Name + calories + remove */}
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={item.food_name}
+                          onChange={e => updateItemFoodName(idx, e.target.value)}
+                          onFocus={() => focusItemFood(idx, item.food_name)}
+                          onBlur={() => setTimeout(() => setActiveItemSugg(null), 150)}
+                          placeholder="Food name"
+                          className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#1B72CC]"
+                        />
+                        <input
+                          type="number"
+                          value={item.calories}
+                          onChange={e => updateItemCalories(idx, e.target.value)}
+                          placeholder="Cal"
+                          min="0"
+                          className="w-[62px] px-2 py-2 border border-slate-200 rounded-lg text-sm text-center focus:outline-none focus:ring-2 focus:ring-[#1B72CC]"
+                        />
+                        {newMealItems.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeItem(idx)}
+                            className="p-1.5 text-slate-300 hover:text-red-400 flex-shrink-0"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} className="w-4 h-4">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Inline search suggestions for this row */}
+                      {activeItemSugg?.idx === idx && (
+                        <SuggestionList
+                          results={activeItemSugg.results}
+                          onSelect={food => selectItemSuggestion(idx, food)}
+                        />
+                      )}
+
+                      {/* Servings row (shown once a DB food is selected for this item) */}
+                      {item.baseCalories !== null && (
+                        <ServingsRow
+                          servings={item.servings}
+                          servingLabel={item.servingLabel}
+                          onChange={s => updateItemServings(idx, s)}
+                        />
                       )}
                     </div>
                   ))}
                 </div>
                 <button
                   type="button"
-                  onClick={() => setNewMealItems(prev => [...prev, { food_name: '', calories: '' }])}
+                  onClick={() =>
+                    setNewMealItems(prev => [
+                      ...prev,
+                      { food_name: '', calories: '', baseCalories: null, servings: '1', servingLabel: '' },
+                    ])
+                  }
                   className="mt-2 text-xs text-[#1B72CC] font-medium hover:underline"
                 >
                   + Add another item
@@ -465,7 +647,11 @@ export default function AddFoodModal({ onClose, onSaved, defaultDate }: Props) {
                 <button
                   type="button"
                   onClick={saveNewMeal}
-                  disabled={savingMeal || !newMealName.trim() || newMealItems.every(i => !i.food_name.trim() || !i.calories)}
+                  disabled={
+                    savingMeal ||
+                    !newMealName.trim() ||
+                    newMealItems.every(i => !i.food_name.trim() || !i.calories)
+                  }
                   className="flex-1 py-2.5 bg-[#1B72CC] text-white text-sm font-semibold rounded-xl disabled:opacity-50 hover:bg-[#1558A0] transition-colors"
                 >
                   {savingMeal ? 'Saving…' : 'Save Meal'}
