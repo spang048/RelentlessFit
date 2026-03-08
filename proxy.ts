@@ -42,5 +42,6 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  // Only protect actual app pages — never static files or login
+  matcher: ['/', '/dashboard', '/food', '/workout', '/weight', '/trends', '/profile', '/login'],
 }

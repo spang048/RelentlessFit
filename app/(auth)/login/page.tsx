@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import BullLogo from '@/components/BullLogo'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -37,10 +36,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-20 h-20 rounded-2xl bg-white/10 flex items-center justify-center mb-4">
-            <BullLogo size={56} />
-          </div>
-          <h1 className="text-2xl font-bold text-white tracking-wide">RELENTLESSFIT</h1>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="RelentlessFit" className="w-64 object-contain mb-2" />
           <p className="text-blue-200 text-sm mt-1">Track. Trend. Improve.</p>
         </div>
 
