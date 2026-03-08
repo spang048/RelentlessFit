@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import Image from 'next/image'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -37,8 +36,9 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-20 h-20 rounded-2xl bg-white/10 flex items-center justify-center mb-4">
-            <Image src="/logo.png" alt="RelentlessFit" width={64} height={64} className="object-contain" />
+          <div className="w-20 h-20 rounded-2xl bg-white/10 flex items-center justify-center mb-4 overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="RelentlessFit" className="w-full h-full object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-white tracking-wide">RELENTLESSFIT</h1>
           <p className="text-blue-200 text-sm mt-1">Track. Trend. Improve.</p>
