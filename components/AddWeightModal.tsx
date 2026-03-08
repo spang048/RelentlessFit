@@ -43,8 +43,10 @@ export default function AddWeightModal({ onClose, onSaved, defaultDate }: Props)
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-0 md:p-4">
-      <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-2xl shadow-xl max-h-[85vh] flex flex-col">
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="absolute inset-x-0 bottom-0 md:inset-0 md:flex md:items-center md:justify-center md:p-4">
+      <div className="relative bg-white w-full md:max-w-md md:rounded-2xl rounded-t-2xl shadow-xl flex flex-col overflow-hidden" style={{ maxHeight: '85dvh' }} onClick={e => e.stopPropagation()}>
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 flex-shrink-0">
@@ -111,6 +113,7 @@ export default function AddWeightModal({ onClose, onSaved, defaultDate }: Props)
             {saving ? 'Saving…' : 'Log Weight'}
           </button>
         </form>
+      </div>
       </div>
     </div>
   )
