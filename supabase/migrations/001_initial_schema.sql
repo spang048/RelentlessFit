@@ -68,6 +68,11 @@ alter table rf_food_entries enable row level security;
 alter table rf_exercise_entries enable row level security;
 alter table rf_weight_entries enable row level security;
 
+drop policy if exists "Users own their profile" on rf_profiles;
+drop policy if exists "Users own their food entries" on rf_food_entries;
+drop policy if exists "Users own their exercise entries" on rf_exercise_entries;
+drop policy if exists "Users own their weight entries" on rf_weight_entries;
+
 create policy "Users own their profile"
   on rf_profiles for all using (auth.uid() = user_id);
 
