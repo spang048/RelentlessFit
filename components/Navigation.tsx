@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import BullLogo from '@/components/BullLogo'
 
 const navItems = [
   {
@@ -61,9 +62,8 @@ export default function Navigation() {
         {/* Logo */}
         <div className="p-4 border-b border-slate-200">
           <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#1B72CC] flex items-center justify-center overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/logo.png" alt="RelentlessFit" className="w-full h-full object-contain" />
+            <div className="w-8 h-8 rounded-lg bg-[#1B72CC] flex items-center justify-center">
+              <BullLogo size={24} />
             </div>
             <span className="font-bold text-slate-900 text-sm tracking-wide">RELENTLESSFIT</span>
           </Link>
